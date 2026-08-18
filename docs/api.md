@@ -99,6 +99,24 @@ Borrowing and returning do not clear it because catalogue responses do not
 include borrowing information. The configured default cache lifetime is 30
 minutes.
 
+## Choice of Database
+
+MySQL was selected because it is straightforward to configure and is a good fit
+for this project's relational data model. Borrowers, books, and their current
+loan relationship map naturally to tables and a foreign key, while the required
+operations are primarily straightforward create, read, and update operations.
+
+MySQL also provides the ACID transaction guarantees needed to keep borrow and
+return operations consistent. The application combines those transactions with
+an atomic conditional update that assigns a borrower only when a book's
+`borrower_id` is `NULL`. When concurrent requests try to borrow the same copy,
+only one update can succeed.
+
+Indexes reduce lookup time for the identifiers used by the API. The current
+schema uses primary-key indexes for book and borrower UUIDs and a unique index
+for borrower email addresses, supporting identifier lookups and duplicate-email
+checks efficiently.
+
 ## CI/CD workflow
 
 The [GitHub Actions workflow](../.github/workflows/build-deploy.yml) performs
