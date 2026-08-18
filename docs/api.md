@@ -104,15 +104,22 @@ updates prevent two borrowers from successfully borrowing the same book and
 prevent a borrower from returning a book assigned to somebody else.
 
 ```mermaid
-%%{init: {"state": {"nodeSpacing": 400, "rankSpacing": 160, "edgeLengthFactor": "60"}}}%%
+%%{init: {"state": {"nodeSpacing": 120, "rankSpacing": 180}}}%%
 stateDiagram-v2
+    direction LR
+
     [*] --> Available: Book created
-    Available --> Borrowed: Borrow succeeds / assign borrower
-    Available --> Available: Return attempted / FAILED
-    Borrowed --> Borrowed: Borrow attempted / FAILED
-    Borrowed --> Borrowed: Return by different borrower / FAILED
-    Borrowed --> Available: Return by assigned borrower / SUCCESS
+
+    Available --> Borrowed: Borrow succeeds<br/>assign borrower
+    Borrowed --> Available: Return by assigned<br/>borrower / SUCCESS
+
+    Available --> Available: Return attempted<br/>FAILED
+
+    Borrowed --> Borrowed: Borrow attempted<br/>FAILED
+    Borrowed --> Borrowed: Return by different<br/>borrower / FAILED
 ```
+
+
 
 Missing book or borrower records produce `404 Not Found` before a state change
 is attempted.
