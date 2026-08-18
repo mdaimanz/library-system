@@ -1,0 +1,374 @@
+openapi: 3.1.0
+info:
+  title: Library System API
+  version: 1.0.0
+  description: >-
+    REST API for registering library borrowers, maintaining a book catalogue,
+    and borrowing or returning individual book records. The API currently has
+    no authentication.
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+tags:
+  - name: Books
+    description: Book catalogue and circulation operations.
+  - name: Borrowers
+    description: Borrower registration operations.
+paths:
+  /api/v1/books:
+    get:
+      tags: [Books]
+      operationId: listBooks
+      summary: List all books
+      description: >-
+        Returns the complete book catalogue. The response is backed by the
+        Redis `books` cache and is an empty array when no books exist.
+      responses:
+        '200':
+          description: The complete book catalogue.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+              examples:
+                catalogue:
+                  value:
+                    - id: 8cbdd372-417c-4e77-b6bf-87d650681abb
+                      isbnNumber: '9780132350884'
+                      title: Clean Code
+                      author: Robert Martin
+                emptyCatalogue:
+                  value: []
+    post:
+      tags: [Books]
+      operationId: createBook
+      summary: Create a book
+      description: >-
+        Adds a physical book record to the catalogue and clears the cached
+        catalogue. ISBN values are checksum-validated, but ISBN uniqueness is
+        not enforced.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreateRequest'
+            example:
+              isbnNumber: '9780132350884'
+              title: Clean Code
+              author: Robert Martin
+      responses:
+        '201':
+          description: The book was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+              example:
+                id: 8cbdd372-417c-4e77-b6bf-87d650681abb
+                isbnNumber: '9780132350884'
+                title: Clean Code
+                author: Robert Martin
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/borrowers:
+    post:
+      tags: [Borrowers]
+      operationId: createBorrower
+      summary: Register a borrower
+      description: >-
+        Registers a borrower who can subsequently borrow and return books. The
+        email address must be valid and not already registered.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BorrowerCreateRequest'
+            example:
+              name: Ada Lovelace
+              email: ada@example.com
+      responses:
+        '201':
+          description: The borrower was registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Borrower'
+              example:
+                id: ff17e35c-d105-4d08-a573-d8f992d544c1
+                name: Ada Lovelace
+                emailAddress: ada@example.com
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/books/{bookId}/borrow:
+    patch:
+      tags: [Books]
+      operationId: borrowBook
+      summary: Borrow a book
+      description: >-
+        Assigns an available book to an existing borrower using a conditional
+        database update. An already-borrowed book produces HTTP 200 with a
+        response body whose status is FAILED.
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BorrowBookRequest'
+            example:
+              borrowerId: ff17e35c-d105-4d08-a573-d8f992d544c1
+      responses:
+        '200':
+          description: >-
+            Borrow attempt result. SUCCESS means the assignment was made;
+            FAILED means the book was already borrowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CirculationResponse'
+              examples:
+                success:
+                  value:
+                    status: SUCCESS
+                    description: >-
+                      Book 8cbdd372-417c-4e77-b6bf-87d650681abb is now borrowed
+                      by ff17e35c-d105-4d08-a573-d8f992d544c1
+                alreadyBorrowed:
+                  value:
+                    status: FAILED
+                    description: >-
+                      Book 8cbdd372-417c-4e77-b6bf-87d650681abb is currently
+                      borrowed by someone else
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/BookOrBorrowerNotFound'
+  /api/v1/books/{bookId}/return:
+    patch:
+      tags: [Books]
+      operationId: returnBook
+      summary: Return a book
+      description: >-
+        Clears a book assignment only when it matches the supplied borrower.
+        An available book or a borrower mismatch produces HTTP 200 with a
+        response body whose status is FAILED.
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnBookRequest'
+            example:
+              borrowerId: ff17e35c-d105-4d08-a573-d8f992d544c1
+      responses:
+        '200':
+          description: >-
+            Return attempt result. SUCCESS means the matching assignment was
+            cleared; FAILED means no matching assignment was found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CirculationResponse'
+              examples:
+                success:
+                  value:
+                    status: SUCCESS
+                    description: >-
+                      Book 8cbdd372-417c-4e77-b6bf-87d650681abb is successfully
+                      returned
+                assignmentMismatch:
+                  value:
+                    status: FAILED
+                    description: Return process failed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/BookOrBorrowerNotFound'
+components:
+  parameters:
+    BookId:
+      name: bookId
+      in: path
+      required: true
+      description: UUID of an existing book.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  responses:
+    BadRequest:
+      description: >-
+        The JSON body, path UUID, or a business field is invalid. Domain
+        validation errors use Problem Details; framework validation response
+        details may vary.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          examples:
+            invalidIsbn:
+              value:
+                type: about:blank
+                title: Invalid ISBN format
+                status: 400
+                detail: Wrong ISBN format
+    BookOrBorrowerNotFound:
+      description: The specified book or borrower does not exist.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          examples:
+            bookNotFound:
+              value:
+                type: about:blank
+                title: Book not found
+                status: 404
+                detail: Book not found
+            borrowerNotFound:
+              value:
+                type: about:blank
+                title: Borrower not found
+                status: 404
+                detail: Borrower not found
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      examples:
+        - 8cbdd372-417c-4e77-b6bf-87d650681abb
+    Book:
+      type: object
+      additionalProperties: false
+      required: [id, isbnNumber, title, author]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        isbnNumber:
+          type: string
+          description: ISBN exactly as supplied when the book was created.
+          examples: ['9780132350884']
+        title:
+          type: string
+          examples: [Clean Code]
+        author:
+          type: string
+          examples: [Robert Martin]
+    BookCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [isbnNumber, title, author]
+      properties:
+        isbnNumber:
+          type: string
+          minLength: 1
+          description: >-
+            Checksum-valid ISBN-10 or ISBN-13. Spaces and hyphens are ignored;
+            ISBN-10 may end in X or x.
+          examples: ['9780132350884', '0-306-40615-2']
+        title:
+          type: string
+          minLength: 1
+          description: Non-blank book title.
+          examples: [Clean Code]
+        author:
+          type: string
+          minLength: 1
+          pattern: '^\p{L}[\p{L}\p{M}]*(?: \p{L}[\p{L}\p{M}]*)*$'
+          description: >-
+            Unicode letters and combining marks, with single spaces between
+            words; no punctuation, digits, or leading/trailing spaces.
+          examples: [Robert Martin]
+    BorrowerCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: '^\p{L}[\p{L}\p{M}]*(?: \p{L}[\p{L}\p{M}]*)*$'
+          description: >-
+            Unicode letters and combining marks, with single spaces between
+            words; no punctuation, digits, or leading/trailing spaces.
+          examples: [Ada Lovelace]
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+          description: A syntactically valid email not already registered.
+          examples: [ada@example.com]
+    Borrower:
+      type: object
+      additionalProperties: false
+      required: [id, name, emailAddress]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          examples: [Ada Lovelace]
+        emailAddress:
+          type: string
+          format: email
+          examples: [ada@example.com]
+    BorrowBookRequest:
+      type: object
+      additionalProperties: false
+      required: [borrowerId]
+      properties:
+        borrowerId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          description: UUID of an existing borrower who will receive the book.
+    ReturnBookRequest:
+      type: object
+      additionalProperties: false
+      required: [borrowerId]
+      properties:
+        borrowerId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          description: >-
+            UUID of an existing borrower. It must match the book's current
+            assignment for the return to succeed.
+    CirculationResponse:
+      type: object
+      additionalProperties: false
+      required: [status, description]
+      properties:
+        status:
+          type: string
+          enum: [SUCCESS, FAILED]
+          description: Business result of the borrow or return attempt.
+        description:
+          type: string
+          description: Human-readable result message.
+    ProblemDetail:
+      type: object
+      description: Problem Details response based on RFC 9457.
+      required: [title, status, detail]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+      additionalProperties: true
+

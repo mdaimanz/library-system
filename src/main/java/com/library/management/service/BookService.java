@@ -11,6 +11,8 @@ import com.library.management.exception.InvalidIsbnFormatException;
 import com.library.management.mapper.BookMapper;
 import com.library.management.util.NameValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class BookService {
     private final BookMapper bookMapper;
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "books")
     public List<BookResponse> findAll() {
         return bookRepository
                 .findAll()
@@ -36,6 +39,7 @@ public class BookService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "books", allEntries = true)
     public BookResponse create(BookRequest request) {
         if(!isValidIsbn(request.isbnNumber())){
             throw new InvalidIsbnFormatException("Wrong ISBN format");
