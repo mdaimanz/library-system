@@ -1,6 +1,7 @@
 package com.library.management.api.exception;
 
 import com.library.management.exception.DuplicateEmailException;
+import com.library.management.exception.InvalidEmailFormatException;
 import com.library.management.exception.InvalidNameException;
 import com.library.management.exception.InvalidIsbnFormatException;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,16 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
         problemDetail.setTitle("Duplicate email");
+        return problemDetail;
+    }
+
+    @ExceptionHandler(InvalidEmailFormatException.class)
+    public ProblemDetail handleInvalidEmailFormat(InvalidEmailFormatException exception) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                exception.getMessage()
+        );
+        problemDetail.setTitle("Invalid email format");
         return problemDetail;
     }
 

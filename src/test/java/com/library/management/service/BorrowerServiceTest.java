@@ -6,10 +6,14 @@ import com.library.management.domain.model.Borrower;
 import com.library.management.domain.repository.BookRepository;
 import com.library.management.domain.repository.BorrowerRepository;
 import com.library.management.exception.DuplicateEmailException;
+import com.library.management.exception.InvalidEmailFormatException;
 import com.library.management.exception.InvalidNameException;
 import com.library.management.mapper.BorrowerMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -71,6 +75,29 @@ class BorrowerServiceTest {
         );
 
         assertEquals("Name must contain only letters and spaces", exception.getMessage());
+        verifyNoInteractions(borrowerRepository, bookRepository, borrowerMapper);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {
+            "plainaddress",
+            "@example.com",
+            "borrower@",
+            "borrower@example",
+            "borrower..name@example.com",
+            "borrower@example..com",
+            "borrower name@example.com"
+    })
+    void createRejectsInvalidEmailBeforeAccessingRepositories(String email) {
+        BorrowerRequest request = new BorrowerRequest("Valid Borrower", email);
+
+        InvalidEmailFormatException exception = assertThrows(
+                InvalidEmailFormatException.class,
+                () -> borrowerService.create(request)
+        );
+
+        assertEquals("Invalid email format", exception.getMessage());
         verifyNoInteractions(borrowerRepository, bookRepository, borrowerMapper);
     }
 
