@@ -1,7 +1,10 @@
 CREATE TABLE IF NOT EXISTS borrower (
     id BINARY(16) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email_address VARCHAR(200) NOT NULL
+    email_address VARCHAR(200) NOT NULL,
+
+    CONSTRAINT uq_borrower_email_address
+        UNIQUE (email_address)
 );
 
 CREATE TABLE IF NOT EXISTS book (
