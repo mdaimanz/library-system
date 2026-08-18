@@ -104,7 +104,7 @@ updates prevent two borrowers from successfully borrowing the same book and
 prevent a borrower from returning a book assigned to somebody else.
 
 ```mermaid
-%%{init: {"state": {"nodeSpacing": 100, "rankSpacing": 160, "edgeLengthFactor": "40"}}}%%
+%%{init: {"state": {"nodeSpacing": 400, "rankSpacing": 160, "edgeLengthFactor": "60"}}}%%
 stateDiagram-v2
     [*] --> Available: Book created
     Available --> Borrowed: Borrow succeeds / assign borrower
