@@ -82,7 +82,7 @@ public class BookService {
             return new ReturnBookResponse("FAILED", "Return process failed");
         }
 
-        return new ReturnBookResponse("SUCCSS", "Book %s is successfully returned".formatted(bookId));
+        return new ReturnBookResponse("SUCCESS", "Book %s is successfully returned".formatted(bookId));
     }
 
     private void isBookExist(UUID bookId) {
