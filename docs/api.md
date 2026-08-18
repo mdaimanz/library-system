@@ -7,6 +7,41 @@ cache.
 
 For a machine-readable contract, see [openapi.yaml](openapi.yaml).
 
+## Assumptions and design decisions
+
+The project requirements define the core resources and operations but leave the
+following details unspecified. The current implementation makes these
+assumptions and design decisions:
+
+- **Identity and access:** The server generates UUIDs for books and borrowers.
+  The API uses versioned JSON REST endpoints and does not require authentication
+  or authorization.
+- **Borrowers:** A borrower must be registered before their UUID can be used to
+  borrow or return a book. Email addresses are syntax-validated and treated as
+  unique. Borrower names accept Unicode letters and combining marks, with single
+  spaces between words; digits, punctuation, leading/trailing spaces, and
+  repeated spaces are rejected.
+- **Books and ISBNs:** Each book record represents one physical copy and has its
+  own UUID. ISBN-10 and ISBN-13 checksums are validated. Spaces and hyphens are
+  accepted in an ISBN, and its submitted formatting is preserved. Book titles
+  must be non-blank, while author names follow the same character rules as
+  borrower names.
+- **ISBN consistency responsibility:** Multiple copies may share an ISBN, but
+  the API does not verify that existing records with that ISBN have the same
+  title and author. API clients are expected to preserve this required
+  relationship.
+- **Circulation:** A book copy can be assigned to at most one borrower at a
+  time, and only its assigned borrower can return it. Conditional database
+  updates resolve concurrent borrow attempts. The system does not maintain loan
+  history, due dates, borrowing limits, renewals, or reservations.
+- **Responses and listing:** Invalid inputs return `400 Bad Request`, and missing
+  books or borrowers return `404 Not Found`. Borrow and return conflicts return
+  HTTP `200 OK` with `status: "FAILED"`. The complete book list is unpaginated,
+  has no guaranteed ordering, and does not expose current availability.
+- **Infrastructure:** MySQL is the persistent data store. Redis caches only the
+  book catalogue, with a default lifetime of 30 minutes. If Redis is unavailable,
+  catalogue operations continue against MySQL without caching.
+
 ## Conventions
 
 | Item | Value |
@@ -69,6 +104,7 @@ updates prevent two borrowers from successfully borrowing the same book and
 prevent a borrower from returning a book assigned to somebody else.
 
 ```mermaid
+%%{init: {"state": {"nodeSpacing": 100, "rankSpacing": 160, "edgeLengthFactor": "40"}}}%%
 stateDiagram-v2
     [*] --> Available: Book created
     Available --> Borrowed: Borrow succeeds / assign borrower
