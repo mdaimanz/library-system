@@ -1,9 +1,6 @@
 package com.library.management.api.controller;
 
-import com.library.management.api.dto.BookRequest;
-import com.library.management.api.dto.BookResponse;
-import com.library.management.api.dto.BorrowBookRequest;
-import com.library.management.api.dto.BorrowBookResponse;
+import com.library.management.api.dto.*;
 import com.library.management.service.BookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +32,12 @@ public class BookController {
     @PatchMapping("/{bookId}/borrow")
     public ResponseEntity<BorrowBookResponse> borrow(@PathVariable UUID bookId, @Valid @RequestBody BorrowBookRequest request) {
         BorrowBookResponse response = bookService.borrow(bookId, request);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @PatchMapping("/{bookId}/return")
+    public ResponseEntity<ReturnBookResponse> returnBook(@PathVariable UUID bookId, @Valid @RequestBody ReturnBookRequest request) {
+        ReturnBookResponse response = bookService.returnBook(bookId, request);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

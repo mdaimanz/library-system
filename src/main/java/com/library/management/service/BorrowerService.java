@@ -1,16 +1,11 @@
 package com.library.management.service;
 
-import com.library.management.api.dto.BorrowBookRequest;
-import com.library.management.api.dto.BorrowBookResponse;
 import com.library.management.api.dto.BorrowerRequest;
 import com.library.management.api.dto.BorrowerResponse;
-import com.library.management.domain.model.Book;
 import com.library.management.domain.model.Borrower;
 import com.library.management.domain.repository.BookRepository;
 import com.library.management.domain.repository.BorrowerRepository;
 import com.library.management.exception.DuplicateEmailException;
-import com.library.management.exception.InvalidBookException;
-import com.library.management.exception.InvalidBorrowerException;
 import com.library.management.mapper.BorrowerMapper;
 
 import com.library.management.util.NameValidator;
@@ -19,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor

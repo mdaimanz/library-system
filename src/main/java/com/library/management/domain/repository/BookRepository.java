@@ -18,4 +18,12 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
             AND b.borrowerId IS NULL
             """)
     int updateBorrower(@Param("bookId") UUID bookId, @Param("borrower") Borrower borrower);
+
+    @Modifying
+    @Query("""
+            UPDATE Book b SET b.borrowerId = NULL
+            WHERE b.id = :bookId
+            AND b.borrowerId = :borrower
+            """)
+    int returnBook(UUID bookId, Borrower borrower);
 }

@@ -1,9 +1,6 @@
 package com.library.management.service;
 
-import com.library.management.api.dto.BookRequest;
-import com.library.management.api.dto.BookResponse;
-import com.library.management.api.dto.BorrowBookRequest;
-import com.library.management.api.dto.BorrowBookResponse;
+import com.library.management.api.dto.*;
 import com.library.management.domain.model.Book;
 import com.library.management.domain.model.Borrower;
 import com.library.management.domain.repository.BookRepository;
@@ -71,6 +68,21 @@ public class BookService {
 
         return new BorrowBookResponse("SUCCESS", "Book %s is now borrowed by %s"
                 .formatted(bookId, request.borrowerId()));
+    }
+
+    @Transactional
+    public ReturnBookResponse returnBook(UUID bookId, ReturnBookRequest request){
+        isBookExist(bookId);
+        Borrower borrower = getBorrower(request.borrowerId());
+
+        //update
+        int result = bookRepository.returnBook(bookId, borrower);
+
+        if(result == 0){
+            return new ReturnBookResponse("FAILED", "Return process failed");
+        }
+
+        return new ReturnBookResponse("SUCCSS", "Book %s is successfully returned".formatted(bookId));
     }
 
     private void isBookExist(UUID bookId) {
