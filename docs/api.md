@@ -106,6 +106,11 @@ continuous integration and publishes a Docker image when changes are pushed to
 the `main` branch. Pull requests and pushes to other branches do not trigger the
 workflow.
 
+The working pipeline and its published artifacts can be viewed here:
+
+- [GitHub Actions workflow runs](https://github.com/mdaimanz/library-system/actions)
+- [Published Docker Hub image tags](https://hub.docker.com/r/aimanmasod/my-personal-project/tags)
+
 The `build-deploy` job runs on GitHub's latest Ubuntu runner and performs these
 steps:
 
