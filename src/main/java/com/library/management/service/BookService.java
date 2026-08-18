@@ -2,8 +2,14 @@ package com.library.management.service;
 
 import com.library.management.api.dto.BookRequest;
 import com.library.management.api.dto.BookResponse;
+import com.library.management.api.dto.BorrowBookRequest;
+import com.library.management.api.dto.BorrowBookResponse;
 import com.library.management.domain.model.Book;
+import com.library.management.domain.model.Borrower;
 import com.library.management.domain.repository.BookRepository;
+import com.library.management.domain.repository.BorrowerRepository;
+import com.library.management.exception.InvalidBookException;
+import com.library.management.exception.InvalidBorrowerException;
 import com.library.management.exception.InvalidIsbnFormatException;
 import com.library.management.mapper.BookMapper;
 import com.library.management.util.NameValidator;
@@ -12,12 +18,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class BookService {
 
     private final BookRepository bookRepository;
+    private final BorrowerRepository borrowerRepository;
     private final BookMapper bookMapper;
 
     @Transactional(readOnly = true)
@@ -45,6 +54,37 @@ public class BookService {
         bookRepository.save(book);
         return bookMapper.toBookResponse(book);
     }
+
+    @Transactional
+    public BorrowBookResponse borrow(UUID bookId, BorrowBookRequest request) {
+        //validate book & borrower
+        isBookExist(bookId);
+        Borrower borrower = getBorrower(request.borrowerId());
+
+        //update
+        int result = bookRepository.updateBorrower(bookId, borrower);
+
+        if(result == 0){
+            return new BorrowBookResponse("FAILED", "Book %s is currently borrowed by someone else"
+                    .formatted(bookId));
+        }
+
+        return new BorrowBookResponse("SUCCESS", "Book %s is now borrowed by %s"
+                .formatted(bookId, request.borrowerId()));
+    }
+
+    private void isBookExist(UUID bookId) {
+        Optional<Book> book = bookRepository.findById(bookId);
+        if(book.isEmpty()) {
+            throw new InvalidBookException("Book not found");
+        }
+    }
+
+    private Borrower getBorrower(UUID borrowerId) {
+        return borrowerRepository.findById(borrowerId)
+                .orElseThrow(() -> new InvalidBorrowerException("Borrower not found"));
+    }
+
 
     //there are 2 ISBN format, ISBN-13 and ISBN-10
     private boolean isValidIsbn(String isbnNumber) {
