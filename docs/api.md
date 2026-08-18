@@ -41,6 +41,9 @@ assumptions and design decisions:
 - **Infrastructure:** MySQL is the persistent data store. Redis caches only the
   book catalogue, with a default lifetime of 30 minutes. If Redis is unavailable,
   catalogue operations continue against MySQL without caching.
+- **Delivery:** A successful build triggered by a push to `main` publishes the
+  application image to Docker Hub. Image publication is automated, but deployment
+  to a running environment is not.
 
 ## Conventions
 
@@ -95,6 +98,37 @@ stores the response in Redis. Creating a book clears the complete `books` cache.
 Borrowing and returning do not clear it because catalogue responses do not
 include borrowing information. The configured default cache lifetime is 30
 minutes.
+
+## CI/CD workflow
+
+The [GitHub Actions workflow](../.github/workflows/build-deploy.yml) performs
+continuous integration and publishes a Docker image when changes are pushed to
+the `main` branch. Pull requests and pushes to other branches do not trigger the
+workflow.
+
+The `build-deploy` job runs on GitHub's latest Ubuntu runner and performs these
+steps:
+
+1. Checks out the repository.
+2. Configures Temurin JDK 17 and enables Maven dependency caching.
+3. Runs `mvn clean verify -B` to compile the application and execute its tests.
+4. Authenticates with Docker Hub.
+5. Configures Docker Buildx and derives the image metadata.
+6. Builds the repository `Dockerfile` for `linux/amd64` and pushes
+   `aimanmasod/my-personal-project` with both of these tags:
+   - `latest`
+   - `sha-<short-commit-SHA>`
+
+Docker Hub authentication requires the following GitHub repository settings:
+
+| Setting type | Name | Purpose |
+| --- | --- | --- |
+| Repository variable | `DOCKERHUB_USERNAME` | Docker Hub account used by the login action. |
+| Repository secret | `DOCKERHUB_TOKEN` | Docker Hub access token used to authenticate. |
+
+Despite the workflow and job name `build-deploy`, the workflow stops after
+publishing the image. It does not deploy the image to a server, container
+platform, or other running environment.
 
 ## Book availability state machine
 
